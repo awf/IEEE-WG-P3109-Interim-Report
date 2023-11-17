@@ -482,10 +482,14 @@ Subformat                  & P3  & P4  & P5   & E5  & E4       & E5  & E4       
 \hline
 Special values shared 
 by all subformats          & \mc3{Y}         & \mc2{N}       & \mc2{Y}       & \mc2{N}\\
+\hline
 Exactly one NaN            & \mc3{Y}         & \mc2{N}       & \mc2{Y}       & \mc2{Y}\\
+\hline
 Positive and negative 
 infinity                   & \mc3{Y}         & N & Y          & \mc2{N}       & \mc2{N}\\
+\hline
 Include negative zero      & \mc3{N}         & \mc2{N}       & \mc2{Y}       & \mc2{N}\\
+\hline
 Max exponent $\emax$       & 15  & 7  & 3     & 15  & 8        & 15  & 7        & N/A  & N/A\\
 \hline
 \end{tabular}
@@ -523,7 +527,8 @@ Table
 \def\subnormal#1{\color{blue}\cell{#1}}
 \def\normal#1{\cell{#1}}
 \def\special#1{\color{brown}\cell{#1}}
-\def\pow#1{\times2^{#1}}
+\def\powz#1{\times2^{#1}}
+\def\e#1#2{\text{#1E{#2}}}
 \tiny
 \hskip-1in
 \begin{tabular}{llll}
