@@ -20,6 +20,11 @@
 \usepackage[svgnames]{xcolor}
 \usepackage[hidelinks]{hyperref}
 \def\url#1{\href{#1}{\color{CadetBlue}\setulcolor{blue}\ul{#1}}}
+\usepackage{pdflscape}
+\usepackage{afterpage}
+\usepackage{adjustbox}
+\usepackage{forloop}
+
 
 \usepackage{titlesec}
 \titleformat{\section}
@@ -519,21 +524,35 @@ Where the fields are interpreted as follows:
 \end{tabular}
 }
 
-\clearpage
-Table
-
-{
 \def\cell#1{$\mathtt{#1}$}
 \def\subnormal#1{\color{blue}\cell{#1}}
 \def\normal#1{\cell{#1}}
 \def\special#1{\color{brown}\cell{#1}}
 \def\powz#1{\times2^{#1}}
 \def\e#1#2{\text{#1E{#2}}}
-\tiny
-\hskip-1in
-\begin{tabular}{llll}
-\input{tables/value-table-p3109_p3}
- \end{tabular}
-}
 
+
+\newenvironment{scope}{}{} % Just to scope the local \defs
+\begin{scope}
+\newgeometry{margin=1cm}
+
+\def\valuetable#1#2{%
+\afterpage{%
+\begin{landscape}
+\subsection{Value Table: #1}
+\thispagestyle{empty}\scriptsize
+\begin{tabular}{llll}
+\input{tables/value-table-#2}
+ \end{tabular}\vspace*{-1cm}%
+\end{landscape}}}
+
+\valuetable{P3}{p3109_p3}
+\valuetable{P4}{p3109_p4}
+\valuetable{P5}{p3109_p5}
+
+
+\restoregeometry
+
+
+\end{scope}
 \end{document}
