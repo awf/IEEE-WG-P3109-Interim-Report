@@ -530,9 +530,9 @@ Where the fields are interpreted as follows:
 \def\subnormal#1{\color{blue}\cell{#1}}
 \def\normal#1{\cell{#1}}
 \def\special#1{\color{brown}\cell{#1}}
-%\def\powz#1{\times{2^{#1}}}
-\def\powz#1{{\times}{{2}{\hat{}}{#1}}}
-\def\e#1#2{\text{#1E{#2}}}
+\def\pow#1{{\times}{{2}\hskip 1pt{\hat{\,}}{#1}}}
+\def\e#1#2{{#1E{#2}}}
+\def\f#1{{#1}}
 
 \newenvironment{scope}{}{} % Just to scope the local \defs
 \begin{scope}
