@@ -11,6 +11,7 @@
 \usepackage{commonunicode}
 \usepackage{mathtools}
 \usepackage{listings}
+\usepackage{threeparttable}
 \usepackage{xspace}
 \usepackage{fvextra}
 \usepackage{graphicx}
@@ -21,6 +22,7 @@
 \usepackage{float}
 \usepackage{colortbl}
 \usepackage[font=sf,labelfont=sf]{caption}
+\usepackage{csquotes}
 \usepackage[svgnames]{xcolor}
 \usepackage[hidelinks]{hyperref}
 \usepackage{pdflscape}
@@ -68,8 +70,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{
-IEEE Working Group P3109 interim report
-on 8-bit binary floating-point formats.
+IEEE Working Group P3109 Interim Report\\
+on
+8-bit Binary Floating-point Formats
 }
 \author{
 Questions and comments via GitHub issues at\\\medskip
@@ -79,7 +82,7 @@ Questions and comments via GitHub issues at\\\medskip
 First public release: 18 September 2023
 \\
 \medskip
-This version: 10 November 2023
+This version: 23 November 2023
 }
 
 \fancyhead[C]{Copyright © 2023 IEEE. All rights reserved.\\
@@ -143,10 +146,11 @@ Binary formats are parameterized by their width, the number of bits spanned in m
 The formats defined herein shall be referred to as ``binary8'' formats, and further qualified by precision yielding names ``binary8p$p$''.
 }
 
-For example, ``binary8p3'' is a format with 3 bits of precision, hence the trailing significand is 2-bits and the exponent field is 5-bits.
+For example, ``binary8p3'' is a format with 3 bits of precision (one implied – “the hidden bit” – and two explicit),
 
 \clearpage
 \section{Values}
+\label{sec:values}
 
 This section describes the set of values that a binary8 format shall represent.
 The universe of values in existing floating point usage encompasses some finite real numerical values,
@@ -165,9 +169,11 @@ The set of finite floating-point numbers representable with a binary format is d
 \item Precision $p$, the number of digits in the significand including the implicit leading bit.
 \item Maximum exponent \emax, the exponent of the largest finite value.
 \end{itemize}
-IEEE-754 2019 includes the radix $b$ and the minimum exponent $\mathit{emin}$ in the list of format-defining parameters, while this document excludes them with the following rationale.
-This document covers binary (radix 2) formats only, so $b$ is not a format parameter.
-The parameter $\mathit{emin}$ is determinable from other parameters, so is also not a format-defining parameter.
+IEEE-754 2019 includes the radix $b$ and the minimum exponent $\mathit{emin}$ in the list of format-defining parameters, while this document excludes them with the following rationale:
+\begin{itemize}
+    \item This document covers binary (radix 2) formats only, so $b$ is not a format parameter.
+    \item The parameter $\mathit{emin}$ is determinable from other parameters (, so is also not a format-defining parameter.
+\end{itemize}
 
 \spec{\boldmath P3109 formats shall define $\emax(p)$ to be $\lceil 2^{8-p-1}-1 \rceil$}.
 In IEEE-754, \emax was consistently chosen across formats to be $2^{w-1}-1$, where $w$ is the exponent field width in bits.
@@ -183,88 +189,37 @@ This choice of formula yields the following properties:
 
 The choice of \emax for a given format then determines the exponent bias for that format.  The bias is chosen so that the exponent of the largest finite value is \emax.
 For IEEE-754 formats, the largest finite value corresponds to an exponent field which has all but the zeroth bit set (e.g.\ 11110 for binary16), because all of the values with all-bits-one exponents (ABOE values) are occupied by non-finite values (Not-a-Numbers or Infinities).
-Thus, the unbiased exponent of the largest finite value is $2^w-2$, from which bias is computed as
+Thus, the biased exponent of the largest finite value is $2^w-2$, from which bias is computed as
 $$
 \emax = (2^w-2) - \bias \implies \bias = (2^w - 2) - (2^{w-1}-1) = 2^{w-1} - 2 + 1 = \emax
 $$
-For the binary8 formats in this document where $p>1$, only one of the ABOE values is non-finite ($\pm$Infinity), so the unbiased exponent of the largest finite value is $2^w - 1$.
+For the binary8 formats in this document where $p>1$, only one of the ABOE values is non-finite ($\pm$Infinity), so the biased exponent of the largest finite value is $2^w - 1$.
 Hence the bias calculation becomes
 $$
 \bias = (2^w - 1) - (2^{w-1}-1) = 2^{w-1} - 1 + 1 = \emax + 1
 $$
-For $p=1$, there are zero trailing significand bits, so all ABOE values are special, so again $\bias=\emax$. 
+For $p=1$, there are zero trailing significand bits, so all ABOE values are special, and again $\bias=\emax$. 
 
-% The default bias determines the range of finite values represented by a given format. In IEEE-754 the default bias
-% was chosen so that the largest finite exponent Emax was 2��−1. This corresponding to a bias of 2��−1 − 1, accounting
-% for the use of the all-bits-one exponent to encode NaNs. With P3109 formats encoding a single NaN, the equivalent
-% Emax corresponds to a bias of 2��−1. Concretely, this yields the value tables in Fig 1.
-% In contrast to an alternative bias of 2��−1 − 1, the following advantages pertain:
-% - All F8E5 finite values are in the Binary16 finite range. (Vs E5 FLT_MAX = 98304.0 > HALF_MAX = 65504.0).
-% - The product of two F8E4 values will not exceed HALF_MAX.
-% - More values close to zero may be of value in training deep neural networks
-% We note that given that most FP8 operations will also allow scaling by powers of two, the precise choice of default
-% bias is unlikely to significantly impact training or inference of deep neural network models.
-% To vote: FP8 finite values shall be interpreted with a bias of 2��−1
-
-
-\begin{table}
+\begin{table}[tb]
 \centering
-\newif\ifcellbold
-\def\setcellfont{\ifcellbold\bfseries\boldmath\else\normalfont\fi}
-\newcolumntype{A}{>{\setcellfont\columncolor{LightGrey}\raggedright}p{31mm}<{}}
-\newcolumntype{E}{>{\setcellfont\columncolor{LightCyan}}c}
-\newcolumntype{O}{>{\setcellfont\columncolor{LavenderBlush}}c}
-\cellboldtrue
-\small
-\def\eol{\\\arrayrulecolor{lightgray}\hline}
-%\hspace*{-5mm}%
-\begin{tabular}{AEEEEOOO}
-\hline
-Parameter & binary8p$\{p\}$ & binary8p5 & binary8p4 & binary8p3 & binary16 & binary32 & binary64\\
-\hline
-Storage width in bits $k$ & 8 & 8 & 8 & 8 & 16 & 32 & 64\eol
-Precision in bits $p$  & p & 5 & 4 & 3 & 11 & 24 & 53\eol
-Max exponent \emax & $\lceil 2^{8-p-1}-1 \rceil $   & 3 & 7 & 15 & 15 & 127 & 1023
-\global\cellboldfalse%
-\\\arrayrulecolor{black}\hline
-Sign bit & 1 & 1 & 1 & 1 & 1 & 1 & 1\eol
-Exponent field width $w$ & $8 - p$ & 3 & 4 & 5 & 5 & 8 & 11\eol
-Exponent bias, $\bias$ & $\emax + (p>1)$ & 4 & 8 & 16 & 15 & 127 & 1023\eol
-Trailing significand field width in bits $t$ & $p - 1$ & 4 & 3 & 2 & 10 & 23 & 52
-\\\hline
-\end{tabular}
+\input{tables/parameters}
 \caption{Parameters for binary formats. Format-defining parameters in bold, derived parameters in normal font.
-Adapted from Table 3.5 of IEEE-754 (2019), and extended to include proposed binary8 formats.
+Adapted from Table 3.5 of IEEE-754 (2019), and extended to include proposed binary8p$p$ formats.  Concepts are explained in detail in section~\ref{sec:values}.
 }
 \label{tbl:parameters}
 \end{table}
-
-\begin{table}[b]
-\begin{center}
-\begin{tabular}{lcc}
-Value & Hexadecimal Encoding & Bit Sequence\\\hline
-Zero                            & \code{0x00} & \code{0000\,0000}\\
-Positive Infinity (\code{+Inf}) & \code{0x7F} & \code{0111\,1111}\\
-Negative Infinity (\code{-Inf}) & \code{0xFF} & \code{1111\,1111}\\
-Not a Number (\code{NaN})       & \code{0x80} & \code{1000\,0000}\\
-\end{tabular}
-\end{center}
-\caption{Mappings from special values to encodings, common to all binary8 formats.}
-\label{tbl:specials}
-\end{table}
-
 
 \subsection{Subnormals}
 
 \spec{Binary8 value sets shall include subnormals.}
 
-The IEEE-754 value sets include subnormals.  A value with trailing significand field $m$ and exponent $e$ is interpreted as $1.m \times 2^{e-b}$ except when all bits of the exponent bitfield are 0, 
+IEEE-754 value sets include subnormals.  A value with trailing significand field $m$ and exponent $e$ is interpreted as $1.m \times 2^{e-b}$ except when all bits of the exponent bitfield are 0, 
 in which case the value is $0.m \times 2^{e-b}$.
 
 When training models, it is common to represent near-zero values for gradients.
 Subnormal numbers induce equal quantization steps around zero; this expands the reach of binary8 trainable models.
 In statistical applications, the subnormal range is useful for uniform and similar distributions; subnormals are uniformly spaced around zero.
-They also support working with Gaussian-like distributions where numbers around zero are more probable.
+They also support working with Gaussian-like distributions, where numbers around zero are more probable.
 
 \subsection{Not a number (NaN)}
 \spec{Binary8 value sets shall include exactly one NaN, which shall not signal.}
@@ -278,34 +233,46 @@ In the context of machine learning systems, uses of NaN include:
 \begin{itemize}
 \item
 Debugging of code running on accelerator hardware.
-In AI accelerators, exceptions may be difficult or expensive to convey back to user code, so it is common practice to allow NaN values to propagate through calculations in order to indicate that an error has occurred.
+In AI accelerators, exceptions may be difficult or expensive to convey back to user code, so it is common practice to allow NaN values to propagate through calculations to indicate that an error has occurred.
 \item
-Usage as a “notable value” indicator.
-In some datasets, for example tabular data, values may be missing.
+Use as a 'notable value' indicator.
+In some datasets, for example, tabular data, values may be missing.
 It is useful to use a value outside the normal numeric range to indicate the position of these values.
-Particularly where memory usage is a concern, as may be expected in applications where 8-bit formats are being considered, the use of a separate “mask” array, or a list of indices, imposes additional memory overhead.
+Particularly when memory usage is a concern, as may be expected in applications where 8-bit formats are being considered, the use of a separate “mask” array, or a list of indices, imposes additional memory overhead.
 In some cases, \val{Inf} can be used as a missing value, but given the restricted range of binary8 formats, it is likely that infinity shall be used as a separate indicator of rounding from values outside of the finite range.
 \item 
 The use of multiple NaN payloads is known in statistical code (e.g. the R system has NaN and N/A), but it is not widely used, and in the context of binary8, multiple NaNs impose either additional hardware complexity (using only a subset of the significand range), or a large reduction in encoding space (e.g. 8 codes for E5, 16 codes for E4, 32 codes for E3).
 \end{itemize}
 
 \subsection{Zero}
-\spec{Binary8 formats shall have exactly one zero. This zero value is non-negative.}
+\spec{Binary8 formats shall have exactly one zero. This zero value is nonnegative.}
 
 The inclusion of negative zero would incur the cost of an additional code point. Given the decision to encode only a single NaN, placing that NaN at the negative zero code point enables the strictly positive and strictly negative number ranges to be symmetric.
 
-A key rationale for inclusion of $-0$ in IEEE-754 was the consistent implementation of branch cuts in the \val{atan2} function~\cite{kahan87,kahanthomas91}.
+A key rationale for including $-0$ in IEEE-754 was the consistent implementation of branch cuts in the \val{atan2} function~\cite{kahan87,kahanthomas91}.
 Although the \val{atan} function is common in deep learning, it is generally used as an activation function, rather than a trigonometric operation, and the \val{atan2} function is rare, if not unknown, in deep learning applications.
 Furthermore, it is not expected that this standard shall define either \val{atan} or \val{atan2}.
 
-A secondary rationale for providing $-0$ is the hardware simplification offered by its presence in the implementation of sign/magnitude arithmetic.   However, the existence of in-market implementations is evidence that the small hardware simplification has not been sufficient to balance the loss of one code point.
+A secondary reason for providing $-0$ is the hardware simplification offered by its presence in the implementation of sign/magnitude arithmetic.   However, the existence of in-market implementations is evidence that the small hardware simplification has not been sufficient to balance the loss of one code point.
 
-It might be considered that the use of integer comparisons in sorting would argue against the placing of NaN at the negative zero code point.
+It might be considered that the use of integer comparisons in sorting would argue against placing NaN at the negative zero code point.
 For example, the JAX machine learning framework is known to sort using integer comparison~\cite{jax:sort}.
-However such sorting still requires $O(n)$ preprocessing and postprocessing steps to enable the use of twos-complement integer comparison, and already has special treatment of NaN and -0, so eliminating -0 and placing NaN in the -0 position imposes negligible additional burden.
-As an aside, sorting using comparison operations, as typically implemented, is undefined in presence of NaNs.
+However, such sorting still requires $O(n)$ preprocessing and postprocessing steps to enable the use of twos-complement integer comparison, and already has special treatment of NaN and -0, so eliminating -0 and placing NaN in the -0 position imposes negligible additional burden. Sorting using comparison operations, as typically implemented, is undefined in the presence of NaNs.
 However, existing practice is to sort NaNs using \val{totalOrder}.
 
+\begin{table}[tb]
+\begin{center}
+\begin{tabular}{lcc}
+Value & Hexadecimal Encoding & Bit Sequence\\\hline
+Zero                            & \code{0x00} & \code{0000\,0000}\\
+Positive Infinity (\code{+Inf}) & \code{0x7F} & \code{0111\,1111}\\
+Negative Infinity (\code{-Inf}) & \code{0xFF} & \code{1111\,1111}\\
+Not a Number (\code{NaN})       & \code{0x80} & \code{1000\,0000}\\
+\end{tabular}
+\end{center}
+\caption{Mappings from special values to encodings, common to all binary8 formats.}
+\label{tbl:specials}
+\end{table}
 
 \subsection{Infinities}
 
@@ -327,75 +294,82 @@ As illustrated in Appendix A, both usages are facilitated by the presence of inf
 \centering
 \input{tables/tbl-extremalvalues}
 \caption{Extremal values}
+\label{tbl:extremalvalues}
 \end{table}
 
 It is practical to offer extremal finite values for supported 8-bit binary interchange formats.
 Following IEEE 754-2019 naming patterns, we adopt:
-\val{maxNormal(T), minNormal(T), minSubnormal(T)} where T is a binary8 format. 
-
+\val{maxNormal(T), minNormal(T), minSubnormal(T)} where T is a binary8 format.
 For example:
 \val{maxNormal( binary8p4 ) = \binaryfloat{7/4}{7}}, 
 \val{minNormal( binary8p5 ) = \binaryfloat{1}{-3}}.
 
+Table~\ref{tbl:extremalvalues} shows these values in binary8 formats for $1<p<8$.
+
+\clearpage
 \section{Classification operators}
 \spec{
 Conforming implementations shall provide these classification predicates and the classifier function.
 The classification predicates and the classifier function shall not signal exceptions.
 }
 
+\raggedright
 The classification operators comprise: 1) a set of functions with a boolean return value, taking a single binary8 value as input; 2) a function $\operatorname{class}(x)$ that returns a single value of enumeration type, describing the input value's properties.
 
-\begin{table}[htb!]
 \raggedright
-Predicates shall behave as follows:
-\bigskip
-\begin{center}
-\begin{minipage}[t]{0.45\textwidth}
-~\\[-\baselineskip] % minipage containing only tabular reinterprets [t]
-\raggedright
-\def\pred#1#2{#1&#2\\}
-\begin{tabular}{ll}
-\bf Predicate	& \bf Definition \vspace{1ex}\\
-\pred{isZero}           {iff\footnote{iff abbreviates "if and only if"}  x  is 0}
-\pred{isNaN}            {iff x  is NaN}
-\pred{isInfinite}       {iff x is infinite}
-\pred{isFinite}         {iff x is zero, subnormal or normal}
-\pred{isNormal}         {iff x is normal, hence finite}
-\pred{isSubnormal}      {iff x is subnormal}
-\pred{isSignMinus}      {iff x has a negative sign \footnote{isSignMinus(NaN) is True: NaN is 0x80 (0b10000000).}}
-\pred{isCanonical}      {True\footnote{There are no non-canonical binary8 interchange formats.}}
-\pred{isSignaling}      {False\footnote{All binary8 formats have one NaN; it does not signal.}}
-\end{tabular}
-\end{minipage}%
-\caption{Classification Predicates}
-\end{center}
-\end{table}%
-
-\begin{table}[htb!]
-\raggedright
-The Classifier function $\operatorname{class}(x)$ shall return enumeration values as follows:
+Predicates shall behave as follows:\\
 \bigskip
 
+\begin{table}[htb]
 \begin{center}
 \begin{minipage}[t]{0.55\textwidth}
 ~\\[-\baselineskip] % minipage containing only tabular reinterprets [t]
 \raggedright
-\def\class#1#2{$\mathtt{#1}$ & #2\\}
-\begin{tabular}{ll}
-\bf Enumeration & \bf Condition \vspace{1ex}\\
-\class{NaN}               {isNaN(x)}
-\class{Zero}              {isZero(x)}
-\class{positiveInfinity}  {isInfinite(x) and not isSignMinus(x)}
-\class{positiveNormal}    {isNormal(x) and not isSignMinus(x)}
-\class{positiveSubnormal} {isSubnormal(x) and not isSignMinus(x)}
-\class{negativeInfinity}  {isInfinite(x) and isSignMinus(x)}
-\class{negativeNormal}    {isNormal(x) and isSignMinus(x)}
-\class{negativeSubnormal} {isSubnormal(x) and isSignMinus(x)}
+\begin{tabular}{l c l}
+\toprule
+Predicate & & Definition\\
+\midrule \addlinespace[1.2ex]
+  {isZero}       &  &  {if\/f\,\footnote{iff abbreviates "if and only if"}  x  is 0} \\
+  {isNaN}        &  &  {if\/f x  is NaN}\\
+  {isInfinite}   &  &  {if\/f x is infinite}\\
+  {isFinite}     &  &  {if\/f x is zero, subnormal or normal}\\
+  {isNormal}     &  &  {if\/f x is normal, hence finite}\\
+  {isSubnormal}  &  &  {if\/f x is subnormal}\\
+  {isSignMinus}  &  &  {if\/f x has a negative sign\,\footnote{isSignMinus(NaN) is True: NaN is 0x80 (0b10000000).}}\\
+  {isCanonical}  &  &  {True\,\footnote{There are no non-canonical binary8 interchange formats.}}\\
+  {isSignaling}  &  &  {False\,\footnote{All binary8 formats have one NaN; it does not signal.}}\\ \addlinespace[0.2ex]
+\bottomrule
 \end{tabular}
 \end{minipage}
-\caption{Classifier Logic}
 \end{center}
+\caption{Classification Predicates} \label{classification-predicates}
 \end{table}
+
+\bigskip
+\raggedright
+The Classifier function $\operatorname{class}(x)$ shall return enumeration values as follows:\\
+\bigskip
+
+\begin{center}
+\begin{threeparttable}[htb]
+\begin{tabular}{l c l}
+\toprule
+Enumeration & & Condition\\
+\midrule \addlinespace[1.2ex]
+  NaN                &  &  isNaN(x)\\
+  Zero               &  &  isZero(x)\\
+  positiveInfinity   &  &  isInfinite(x) and not(isSignMinus(x))\\
+  positiveNormal     &  &  isNormal(x) and not(isSignMinus(x))\\
+  positiveSubnormal  &  &  isSubnormal(x) and not(isSignMinus(x))\\
+  negativeInfinity   &  &  isInfinite(x) and isSignMinus(x)\\
+  negativeNormal     &  &  isNormal(x) and isSignMinus(x)\\
+  negativeSubnormal  &  &  isSubnormal(x) and isSignMinus(x)\\ \addlinespace[0.2ex]
+\bottomrule
+\end{tabular}
+\caption{Classifier Logic} \label{classifier-logic}
+\end{threeparttable}
+\end{center}
+
 
 \clearpage
 \section{Comparison operators}
@@ -454,7 +428,7 @@ boolean totalOrder(x, y)
 end
 \end{Verbatim}
 
-Note: Following 754's definition of $\totalOrder(x, y)$, binary8 NaNs (0x80) compare as the most negative value. The most significant bit of NaN is set, so, to be consistent with 754, NaN is ordered before all numerical values.
+Note: Following 754's definition of $\totalOrder(x, y)$, binary8 NaNs (0x80) compare as the most negative value. The most significant bit of NaN is set, so to be consistent with 754, NaN is ordered before all numerical values.
 
 % AWF: I believe that rewriting the predicate as above removes the need for this note
 % \begin{center}
@@ -488,10 +462,10 @@ These values, assembled in mask matrix $M$ with values $M_{ij} in \{0,-\infty\}$
 \]
 
 where $\tau$ is a ``temperature'' or ``base'' parameter~\cite{softmax}.
-This calculation depends on the property that $\exp(\tau*(A_{ij}-\infty))=0$.
+This calculation depends on the property $\exp(\tau*(A_{ij}-\infty))=0$.
 
 If a floating point encoding does not provide infinity, then instead $M_{ij}$ will be replaced by a large float (e.g. 480).  This is not in itself a difficulty: if all the $A$ values are bounded (e.g.\ the results of a softmax operation), then $\exp?(1.0-480)$ is an extremely small number, which will certainly round to zero.
-Therefore an explicit representation of infinity is {\em not} needed in order for this computation to yield its desired value.
+Therefore, an explicit representation of infinity is {\em not} needed in order for this computation to yield its desired value.
 
 However, careful implementations do not execute the calculation as written,
 and instead fuse the $\log(\sumop(\exp(v)))$ operation into a single operation $\logsumexp(v)$,
@@ -516,7 +490,7 @@ It is not expected that the full calculation shall be done in 8-bit floating poi
 
 \subsection{Overflow to Infinity}
 
-A second use of infinity is to indicate overflow on conversion to the binary8 type.  Existing implementations offer several behaviours on overflow: overflow to infinity, saturation to MaxFloat, and overflow to NaN.  The existence of a code point for infinity allows any of these options to be implemented in a given instantiation, while removing the code point removes the possibility of implementing the first.
+A second use of infinity is to indicate overflow on conversion to the binary8 type.  Existing implementations offer several behaviors on overflow: overflow to infinity, saturation to MaxFloat, and overflow to NaN.  The existence of a code point for infinity allows any of these options to be implemented in a given instantiation, while removing the code point removes the possibility of implementing the first.
 
 \clearpage
 \section{Comparison table}
@@ -537,7 +511,7 @@ Format                     & \mc3{P3109}  & \mc2{OCP}  & \mc2{AGQ}  & \mc2{TSL}\
 \rowcolor{FloralWhite}
 Subformat                  & P3  & P4  & P5   & E5  & E4       & E5  & E4       & E4  & E5\\
 \hline
-Special values shared 
+Special values shared
 by all subformats          & \mc3{Y}         & \mc2{N}       & \mc2{Y}       & \mc2{N}\\
 \hline
 Exactly one NaN            & \mc3{Y}         & \mc2{N}       & \mc2{Y}       & \mc2{Y}\\
@@ -598,9 +572,12 @@ Where the fields are interpreted as follows:
         \end{tabular}\vspace*{-1cm}%
     \end{landscape}}}
     
+    \valuetable{P2}{p3109_p2}
     \valuetable{P3}{p3109_p3}
     \valuetable{P4}{p3109_p4}
     \valuetable{P5}{p3109_p5}
+    \valuetable{P6}{p3109_p6}
+    \valuetable{P7}{p3109_p7}
     
     \restoregeometry
 \end{scope}

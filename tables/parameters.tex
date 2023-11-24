@@ -1,0 +1,24 @@
+\newif\ifcellbold
+\def\setcellfont{\ifcellbold\bfseries\boldmath\else\normalfont\fi}
+\newcolumntype{A}{>{\setcellfont\columncolor{LightGrey}\raggedright}p{31mm}<{}}
+\newcolumntype{E}{>{\setcellfont\columncolor{LightCyan}}c}
+\newcolumntype{O}{>{\setcellfont\columncolor{LavenderBlush}}c}
+\cellboldtrue
+\small
+\def\eol{\\\arrayrulecolor{lightgray}\hline}
+%\hspace*{-5mm}%
+\begin{tabular}{AEEEEOOO}
+\hline
+Parameter & binary8p$\{p\}$ & binary8p5 & binary8p4 & binary8p3 & binary16 & binary32 & binary64\\
+\hline
+Storage width in bits $k$ & 8 & 8 & 8 & 8 & 16 & 32 & 64\eol
+Precision in bits $p$  & p & 5 & 4 & 3 & 11 & 24 & 53\eol
+Max exponent \emax & $\lceil 2^{8-p-1}-1 \rceil $   & 3 & 7 & 15 & 15 & 127 & 1023
+\global\cellboldfalse%
+\\\arrayrulecolor{black}\hline
+Sign bit & 1 & 1 & 1 & 1 & 1 & 1 & 1\eol
+Exponent field width $w$ & $8 - p$ & 3 & 4 & 5 & 5 & 8 & 11\eol
+Exponent bias, $\bias$ & $\emax + (p>1)$ & 4 & 8 & 16 & 15 & 127 & 1023\eol
+Trailing significand field width in bits $t$ & $p - 1$ & 4 & 3 & 2 & 10 & 23 & 52
+\\\hline
+\end{tabular}
